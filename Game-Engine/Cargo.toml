@@ -8,4 +8,7 @@ egui = "0.29.1"
 egui-winit = "0.29.1"
 winit = "0.30.5"
 eframe = "0.29.1"
-egui_extras = "0.29.1"
+egui_extras = { version = "*", features = ["all_loaders"] }
+image = { version = "0.25", features = ["jpeg", "png"] }
+arraystring = "0.3.0"
+rand = "0.8.5"
