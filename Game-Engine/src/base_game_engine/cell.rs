@@ -8,14 +8,19 @@ type CellImage = ArrayString<U200>;
 #[derive(Clone)]
 pub struct Cell {
     player: PlayerName,
-    player_number: u8,
+    player_number: i32,
     previous_cell_type: CellType,
     cell_type: CellType,
     cell_image: CellImage,
     cell_action: CellAction,
-    cell_hp:i8,
-    cell_atp:u8,
-    cell_attack_range:u8,
+    cell_hp: i32,
+    cell_atp: i32,
+    cell_attack_range: i32,
+}
+impl Default for Cell {
+    fn default() -> Self {
+        Cell::new("Nobody".to_owned())
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -69,15 +74,6 @@ impl Display for CellAction {
     }
 }
 
-impl Default for Cell {
-    fn default() -> Self {
-        Cell::new("Nobody".to_owned())
-    }
-}
-
-
-
-
 impl Cell {
     //static methods
     pub fn new(player_1_name:String) -> Cell {
@@ -111,8 +107,8 @@ impl Cell {
         }
     }
   
-    pub fn get_surrounding_cells(cell_grid_size:u32,position:Vec<usize>) -> Vec<Vec<i8>>{
-        let all_positions:Vec<Vec<i8>> = vec![
+    pub fn get_surrounding_cells(cell_grid_size:i32,position:Vec<usize>) -> Vec<Vec<i32>>{
+        let all_positions:Vec<Vec<i32>> = vec![
             vec![-1,-1],vec![0,-1],vec![1,-1],    // 0, 1 ,2
             vec![-1,0], vec![0,0], vec![1,0],    // 3, 4 ,5
             vec![-1,1], vec![0,1], vec![1,1], // 6, 7 ,8
@@ -139,7 +135,7 @@ impl Cell {
             removed_positions.push(8);
         }
 
-        let mut final_positions:Vec<Vec<i8>> = vec![];
+        let mut final_positions:Vec<Vec<i32>> = vec![];
         for ind in 0..9 {
             if !removed_positions.contains(&ind) {
                 final_positions.push(all_positions[ind as usize].clone());
@@ -166,25 +162,25 @@ impl Cell {
             CellType::SelectedCell => self.cell_attack_range = 0,
         }
     }
-    pub fn set_hp(&mut self, hp:i8){
+    pub fn set_hp(&mut self, hp:i32){
         self.cell_hp = hp;
     }
-    pub fn decrease_hp(&mut self, amount:u8) {
-        self.cell_hp -= amount as i8;
+    pub fn decrease_hp(&mut self, amount:i32) {
+        self.cell_hp -= amount;
     }
-    pub fn increase_hp(&mut self, amount:u8) {
+    pub fn increase_hp(&mut self, amount:i32) {
         self.cell_atp += amount;
     }
-    pub fn set_apt(&mut self, apt:u8){
+    pub fn set_apt(&mut self, apt:i32){
         self.cell_atp = apt;
     }
-    pub fn decrease_apt(&mut self, amount:u8) {
+    pub fn decrease_apt(&mut self, amount:i32) {
         self.cell_atp -= amount;
     }
-    pub fn increase_apt(&mut self, amount:u8) {
+    pub fn increase_apt(&mut self, amount:i32) {
         self.cell_atp += amount;
     }
-    pub fn change_player(&mut self, new_player:String, player_id:u8){
+    pub fn change_player(&mut self, new_player:String, player_id:i32){
         self.player = PlayerName::try_from_str(new_player).unwrap_or(PlayerName::from_str_truncate("Player Name Change Failure"));
         self.player_number = player_id;
     }
@@ -215,18 +211,22 @@ impl Cell {
 
 
     //get methods
-    
-    pub fn get_attack_range(self, cell_grid_size:i32, position:Vec<i8>) -> Vec<Vec<i8>>{
+    pub fn get_attack_range(self, cell_grid_size:i32, position:Vec<usize>) -> Vec<Vec<i32>>{
         let mut valid_positions = vec![];
-        let left_limit = if (position[0] - self.cell_attack_range as i8) >= 0 {(position[0] - self.cell_attack_range as i8) as i32} else {0};
-        let right_limit = if (position[0] + self.cell_attack_range as i8) as i32 <= cell_grid_size-1 {(position[0] + self.cell_attack_range as i8) as i32} else {cell_grid_size-1};
+        let left_limit:i32 = if (position[0] - self.cell_attack_range as usize) >= 0 
+        {position[0] as i32 - self.cell_attack_range} else {0};
+        let right_limit:i32 = if (position[0] + self.cell_attack_range as usize) <= (cell_grid_size-1) as usize 
+        {position[0] as i32 + self.cell_attack_range} else {cell_grid_size-1};
         
-        let upper_limit = if (position[1] + self.cell_attack_range as i8) as i32 <= cell_grid_size-1 {(position[1] + self.cell_attack_range as i8) as i32} else {cell_grid_size-1};
-        let lower_limit = if (position[1] - self.cell_attack_range as i8) >= 0 {(position[1] - self.cell_attack_range as i8) as i32} else {0};
+        let upper_limit:i32 = if (position[1] + self.cell_attack_range as usize) <= (cell_grid_size-1) as usize 
+        {position[1] as i32 + self.cell_attack_range} else {cell_grid_size-1};
+        let lower_limit:i32 = if (position[1] - self.cell_attack_range as usize) >= 0
+        {position[1] as i32 - self.cell_attack_range} else {0};
+
 
         for x in left_limit..right_limit+1 {
         for y in lower_limit..upper_limit+1 {
-            valid_positions.push(vec![x as i8,y as i8]);
+            valid_positions.push(vec![x,y]);
         }
         }
 
@@ -261,16 +261,16 @@ impl Cell {
     pub fn get_cell_player(self) -> String {
         return self.player.as_str().to_owned();
     }
-    pub fn get_cell_player_number(self) -> u8 {
+    pub fn get_cell_player_number(self) -> i32 {
         return self.player_number;
     }
-    pub fn get_cell_hp(self) -> i8 {
+    pub fn get_cell_hp(self) -> i32 {
         return self.cell_hp;
     }
     pub fn get_cell_image(self) -> CellImage{
         return self.cell_image;
     }
-    pub fn get_cell_atp(self) -> u8{
+    pub fn get_cell_atp(self) -> i32{
         return self.cell_atp;
     }
     pub fn get_cell_action(self) -> CellAction{
