@@ -213,14 +213,14 @@ impl Cell {
     //get methods
     pub fn get_attack_range(self, cell_grid_size:i32, position:Vec<usize>) -> Vec<Vec<i32>>{
         let mut valid_positions = vec![];
-        let left_limit:i32 = if (position[0] - self.cell_attack_range as usize) >= 0 
+        let left_limit:i32 = if (position[0] as i32 - self.cell_attack_range) >= 0 
         {position[0] as i32 - self.cell_attack_range} else {0};
         let right_limit:i32 = if (position[0] + self.cell_attack_range as usize) <= (cell_grid_size-1) as usize 
         {position[0] as i32 + self.cell_attack_range} else {cell_grid_size-1};
         
         let upper_limit:i32 = if (position[1] + self.cell_attack_range as usize) <= (cell_grid_size-1) as usize 
         {position[1] as i32 + self.cell_attack_range} else {cell_grid_size-1};
-        let lower_limit:i32 = if (position[1] - self.cell_attack_range as usize) >= 0
+        let lower_limit:i32 = if (position[1] as i32 - self.cell_attack_range) >= 0
         {position[1] as i32 - self.cell_attack_range} else {0};
 
 

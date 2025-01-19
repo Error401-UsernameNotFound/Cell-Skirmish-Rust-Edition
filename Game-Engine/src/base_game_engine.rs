@@ -1,17 +1,14 @@
-use arraystring::{ArrayString, typenum::U200};
 use cell::{Cell, CellAction, CellType};
-use eframe::{egui, Frame};
-use egui::{Sense,Color32, Context};
+pub(crate) mod cell;
 
-mod cell;
-
-
-enum GameState {
+#[derive(Clone, Copy)]
+pub enum GameState {
     Menu,
     LocalGame,
 }
 
-enum FrameAction {
+#[derive(Clone, Copy)]
+pub enum FrameAction {
     MoveCell,
     DuplicateCell,
     PlaceCell,
@@ -20,7 +17,8 @@ enum FrameAction {
     NoAction,
 }
 
-struct GameEngine {
+#[derive(Clone)]
+pub struct GameEngine {
     // State
     current_state: GameState,
     debug_menu_options: bool,
@@ -221,6 +219,9 @@ impl GameEngine {
                 // one extra for workers :3
                 if test_cell.get_raw_cell_type() == CellType::WorkerCell{
                     test_cell.increase_apt(1);
+                }
+                if test_cell.get_cell_atp() > self.cell_apt_cap {
+                    test_cell.set_apt(self.cell_apt_cap);
                 }
             }
         }
@@ -427,6 +428,7 @@ impl GameEngine {
             }
         }
     }
+    
     //   Button handeling
     pub fn check_placable(self, current_cell:Cell) -> bool{
         return  current_cell.get_raw_cell_type() == CellType::PlacableCell && (current_cell.get_cell_player_number() == self.current_turn_id || current_cell.get_cell_action() == CellAction::Attacked)
@@ -459,20 +461,29 @@ impl GameEngine {
         self.last_game_action = "Duplicated".to_owned();
     }
 
-    pub fn check_specailize(self, current_cell:Cell) -> bool{
-        if current_cell.get_cell_player_number() != self.current_turn_id {return false;}
-        match current_cell.get_raw_cell_type() {
-            CellType::EmptyCell => false,
-            CellType::PlacableCell => false,
-            CellType::StemCell => false,
-            CellType::Null => false,
-            CellType::SelectedCell => false,
-            CellType::WorkerCell => current_cell.get_cell_atp() >= self.specalilize_into_worker_cost,
-            CellType::AttackingCell => current_cell.get_cell_atp() >= self.specalilize_into_attacker_cost,
+    pub fn check_transfer(self,current_cell:Cell) -> bool {
+        return current_cell.get_cell_player_number() == self.current_turn_id && current_cell.get_cell_atp() >= self.transfer_apt_cost;
+    }
+    pub fn transfer_atp(&mut self,current_cell:&mut Cell,position:Vec<i32>){
+        self.transfer_apt_amount = self.transfer_apt_amount_string.parse().unwrap_or(0);
+        if current_cell.get_cell_atp() >= self.transfer_apt_cost + self.transfer_apt_amount {
+            self.transfer_surrounding_cells = Cell::get_surrounding_cells(self.grid_size, vec![position[0] as usize, position[1] as usize]);
+            self.transfer_current_position = position.clone();
+            self.game_actions.push(FrameAction::TransferAPTStart);
         }
     }
-    pub fn specailize_cell(&mut self, current_cell:&mut Cell){
-        match current_cell.get_raw_cell_type() {
+
+
+    pub fn check_specailize(self, current_cell:Cell, desired_type:CellType) -> bool{
+        if current_cell.get_cell_player_number() != self.current_turn_id || current_cell.get_raw_cell_type() != CellType::StemCell {return false;}
+        match desired_type {
+            CellType::WorkerCell => current_cell.get_cell_atp() >= self.specalilize_into_worker_cost,
+            CellType::AttackingCell => current_cell.get_cell_atp() >= self.specalilize_into_attacker_cost,
+            _ => false,
+        }
+    }
+    pub fn specailize_cell(&mut self, current_cell:&mut Cell, desired_type:CellType){
+        match desired_type {
             CellType::WorkerCell => {
                 current_cell.replace_cell(CellType::WorkerCell);
                 current_cell.decrease_apt(self.specalilize_into_worker_cost);
@@ -486,6 +497,7 @@ impl GameEngine {
             _ => {},
         }
     }
+    
     pub fn check_attack(self, current_cell:Cell) -> bool {
         return current_cell.get_cell_player_number() == self.current_turn_id && current_cell.get_cell_atp() >= self.attack_cell_cost;
     }
@@ -496,6 +508,7 @@ impl GameEngine {
         current_cell.decrease_apt(self.attack_cell_cost);
         self.last_game_action = "Attack Started".to_owned();
     }
+    
     // debug mode specific functions
     pub fn debug_get_last_action(self) -> String{
         return format!("Last action taken: {}", self.last_game_action);
@@ -506,4 +519,65 @@ impl GameEngine {
     }
     
 
+}
+
+// Getter methods
+impl GameEngine {
+    pub fn get_current_state(self) -> GameState {
+        return self.current_state;
+    }
+    pub fn set_current_state(&mut self, next_state:GameState) {
+        self.current_state = next_state;
+    }
+    pub fn get_player_string(&mut self, player_id:i32) -> &mut String{
+        match player_id {
+            0 => {return &mut self.player_1_name;}
+            1 => {return &mut self.player_2_name;}
+            2 => {return &mut self.player_3_name;}
+            3 => {return &mut self.player_4_name;}
+            _ => {return &mut self.player_4_name;}
+        }
+    }
+    pub fn is_debug(&mut self,) -> &mut bool {
+        return &mut self.debug_menu_options;
+    }
+    pub fn get_player_count(self) -> i32 {
+        return self.player_count;
+    }
+    pub fn set_player_count(&mut self, count:i32) {
+        self.player_count = count;
+    }
+    pub fn get_grid_size(&mut self) -> i32{
+        return self.grid_size;
+    }
+    pub fn set_grid_size(&mut self, new_size:i32){
+        self.grid_size = new_size;
+    }
+    pub fn get_grid_size_string(&mut self) -> &mut String {
+        return &mut self.grid_size_string;
+    }
+    pub fn get_cell_size(self) -> f32 {
+        return self.cell_size;
+    }
+    pub fn set_cell_size(&mut self, new_size:f32) {
+        self.cell_size = new_size;
+    }
+    pub fn get_cell_size_string(&mut self) -> &mut String {
+        return &mut self.cell_size_string;
+    }
+    pub fn get_current_turn_string(&mut self) -> &mut String {
+        return &mut self.current_turn_string;
+    }
+    pub fn get_cell_by_position(&mut self, position:Vec<i32>) -> &mut Cell {
+        return self.cell_grid[position[0] as usize].get_mut(position[1] as usize).unwrap();
+    }
+    pub fn get_transfer_apt_amount_string(&mut self) -> &mut String{
+        return &mut self.transfer_apt_amount_string;
+    }
+    pub fn get_cell_grid(self) -> Vec<Vec<Cell>> {
+        return self.cell_grid;
+    }
+    pub fn sync_cell_grid(&mut self, local_cell_grid:Vec<Vec<Cell>>) {
+        self.cell_grid = local_cell_grid;
+    }
 }
